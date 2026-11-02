@@ -9,31 +9,36 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
     }
 </style>
 
-<div class="projhdr"><i class="fas fa-microphone"></i> Audio Recorder</div>
+<div class="projhdr"><i class="fas fa-video"></i> Video Recorder</div>
 
 <button id="initBtn">Initialize</button>
 <button id="startBtn" disabled>Start Recording</button>
 <button id="stopBtn" disabled>Stop Recording</button>
 <br>
-<input type="checkbox" checked id="audioToggle" />
-<label for="audioToggle">Capture Audio from Desktop</label>
+<input type="checkbox" checked id="cameraToggle" />
+<label for="cameraToggle">Capture Camera</label>
+<br>
+<input type="checkbox" id="audioToggle" />
+<label for="audioToggle">Capture Screen (instead of camera)</label>
 <br>
 <input type="checkbox" checked id="micAudioToggle" />
 <label for="micAudioToggle">Capture Audio from Microphone</label><br>
 <a id="download" href="#" style="display: none;">Download</a><br>
+<video id="preview" autoplay muted playsinline style="max-width: 480px; background: #000;"></video>
 
 <script>
-    $("#audioToggle, #micAudioToggle").on('click', function() {
-        $("#initBtn").prop('disabled', !$("#audioToggle, #micAudioToggle").is(":checked"));
-        ExternalModules.UWMadison.AudioRecorder.recording.desktop = $("#audioToggle").is(":checked");
-        ExternalModules.UWMadison.AudioRecorder.recording.mic = $("#micAudioToggle").is(":checked");
+    $("#cameraToggle, #audioToggle, #micAudioToggle").on('click', function() {
+        $("#initBtn").prop('disabled', !$("#cameraToggle, #audioToggle, #micAudioToggle").is(":checked"));
+        ExternalModules.UWMadison.VideoRecorder.recording.camera = $("#cameraToggle").is(":checked");
+        ExternalModules.UWMadison.VideoRecorder.recording.desktop = $("#audioToggle").is(":checked");
+        ExternalModules.UWMadison.VideoRecorder.recording.mic = $("#micAudioToggle").is(":checked");
     });
     $("#initBtn").on('click', function() {
-        $("#audioToggle, #micAudioToggle").prop('disabled', true);
+        $("#cameraToggle, #audioToggle, #micAudioToggle").prop('disabled', true);
         $("#download").hide();
     });
     $("#stopBtn").on('click', function() {
-        $("#audioToggle, #micAudioToggle").prop('disabled', false);
+        $("#cameraToggle, #audioToggle, #micAudioToggle").prop('disabled', false);
         $("#download").show();
     });
 </script>

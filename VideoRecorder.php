@@ -1,6 +1,6 @@
 <?php
 
-namespace UWMadison\AudioRecorder;
+namespace UWMadison\VideoRecorder;
 
 use ExternalModules\AbstractExternalModule;
 use ExternalModules\ExternalModules;
@@ -10,7 +10,7 @@ use Piping;
 use RCView;
 use RestUtility;
 
-class AudioRecorder extends AbstractExternalModule
+class VideoRecorder extends AbstractExternalModule
 {
     private $defaultMaxTime = 120;
     private $fileExtension = ".webm"; // Default 
@@ -56,7 +56,7 @@ class AudioRecorder extends AbstractExternalModule
     {
         if (!defined("USERID")) return;
 
-        // Audio Reocorder Testing / Demo page
+        // Video Recorder Testing / Demo page
         if ($this->isModulePage('index')) {
             $this->createJSobject([
                 'fallback' => true,
@@ -64,14 +64,16 @@ class AudioRecorder extends AbstractExternalModule
                 'showTimer' => true,
                 'showAudioLevels' => true,
                 'recording' => [
-                    'desktop' => true,
+                    'camera' => true,
+                    'desktop' => false,
                     'mic' => true
                 ],
                 'buttons' => [
                     'init'     => "#initBtn",
                     'start'    => "#startBtn",
                     'stop'     => "#stopBtn",
-                    'download' => "#download"
+                    'download' => "#download",
+                    'preview'  => "#preview"
                 ]
             ]);
             $this->includeJs('recorder.js');
@@ -87,7 +89,7 @@ class AudioRecorder extends AbstractExternalModule
     }
 
     /*
-    Redcap hook to load the primary audio recording functionality 
+    Redcap hook to load the primary video recording functionality 
     on individual instruments 
     */
     public function redcap_data_entry_form($project_id, $record, $instrument, $event_id, $group_id, $repeat_instance)
@@ -96,7 +98,7 @@ class AudioRecorder extends AbstractExternalModule
     }
 
     /*
-    Redcap hook to load the primary audio recording functionality 
+    Redcap hook to load the primary video recording functionality 
     on individual surveys 
     */
     public function redcap_survey_page($project_id, $record, $instrument, $event_id, $group_id, $survey_hash, $response_id, $repeat_instance)
@@ -134,6 +136,7 @@ class AudioRecorder extends AbstractExternalModule
             'showTimer' => $settings['show-timer'][$settingIndex] == '1',
             'showAudioLevels' => $settings['show-audio-levels'][$settingIndex] == '1',
             'recording' => [
+                'camera' => $settings['camera'][$settingIndex] == '1',
                 'desktop' => $settings['desktop'][$settingIndex] == '1',
                 'mic' => $settings['mic'][$settingIndex] == '1'
             ],
@@ -142,7 +145,8 @@ class AudioRecorder extends AbstractExternalModule
                 'start'    => $settings['start-recording'][$settingIndex],
                 'stop'     => $settings['stop-recording'][$settingIndex],
                 'upload'   => $settings['upload-recording'][$settingIndex],
-                'download' => $settings['download-recording'][$settingIndex]
+                'download' => $settings['download-recording'][$settingIndex],
+                'preview'  => $settings['preview'][$settingIndex]
             ],
             "record" => $record,
             "event_id" => $event_id,
@@ -174,7 +178,7 @@ class AudioRecorder extends AbstractExternalModule
     }
 
     /*
-    Uploads an audio recording to the redcap server and moves the file to
+    Uploads a video recording to the redcap server and moves the file to
     the target destination.
     */
     private function upload($project_id, $record, $event_id, $instrument, $instance, $user)
@@ -250,7 +254,7 @@ class AudioRecorder extends AbstractExternalModule
         }
 
         // Log to PHP what we are doing. If there is an issue an Admin might need to recover the file
-        ExternalModules::errorLog("File " . $tmp . " uploaded by Audio Recorder. Destination " . $dest);
+        ExternalModules::errorLog("File " . $tmp . " uploaded by Video Recorder. Destination " . $dest);
         $dirExists = is_dir($dir);
         $dirExists = $dirExists ? true : mkdir($dir, 0777, true);
 
@@ -262,7 +266,7 @@ class AudioRecorder extends AbstractExternalModule
             $extaMsg = $dirExists ? "" : " Failed to create directory";
             ExternalModules::errorLog("Error moving " . $tmp . " to new destination " . $dest . $extaMsg);
             $result["note"] = "Failed to move temporary file to destination";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording." . $extaMsg);
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording." . $extaMsg);
         }
 
         return json_encode([
@@ -286,7 +290,7 @@ class AudioRecorder extends AbstractExternalModule
         if (!move_uploaded_file($tmp, $rename)) {
             ExternalModules::errorLog("Error moving " . $tmp . " to new destination " . $rename);
             $result["note"] = "Failed to move temporary file to file upload field";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording to REDCap file upload field");
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording to REDCap file upload field");
             return json_encode($result);
         }
 
@@ -295,7 +299,7 @@ class AudioRecorder extends AbstractExternalModule
         if ($doc_id == 0) {
             ExternalModules::errorLog("REDCap::storeFile has failed to add file $rename to the edoc metadata for PID $project_id");
             $result["note"] = "Redcap internal method failed to move file into file upload field";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording to REDCap file upload field");
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording to REDCap file upload field");
             return json_encode($result);
         }
         $result['doc_id'] = $doc_id;
@@ -304,7 +308,7 @@ class AudioRecorder extends AbstractExternalModule
         if (!REDCap::addFileToField($doc_id, $project_id, $record, $field, $event_id)) {
             ExternalModules::errorLog("REDCap::addFileToField has failed to add doc_id $doc_id to the file upload field for PID $project_id");
             $result["note"] = "Redcap internal method failed to move file into file upload field";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording to REDCap file upload field");
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording to REDCap file upload field");
             return json_encode($result);
         }
         $result["success"] = true;
@@ -328,7 +332,7 @@ class AudioRecorder extends AbstractExternalModule
         if (!move_uploaded_file($tmp, $rename)) {
             ExternalModules::errorLog("Error moving " . $tmp . " to new destination " . $rename);
             $result["note"] = "Failed to move temporary file to file repo";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording to REDCap file repo");
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording to REDCap file repo");
             return json_encode($result);
         }
 
@@ -337,16 +341,16 @@ class AudioRecorder extends AbstractExternalModule
         if ($doc_id == 0) {
             ExternalModules::errorLog("REDCap::storeFile has failed to add file $rename to the edoc metadata for PID $project_id");
             $result["note"] = "Redcap internal method failed to move file into file repo";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording to REDCap file repo");
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording to REDCap file repo");
             return json_encode($result);
         }
         $result['doc_id'] = $doc_id;
 
         // Try to add the registered doc to the file repo
-        if (!REDCap::addFileToRepository($doc_id, $project_id, "Audio Recorder EM Upload")) {
+        if (!REDCap::addFileToRepository($doc_id, $project_id, "Video Recorder EM Upload")) {
             ExternalModules::errorLog("REDCap::storeFile has failed to add doc_id $doc_id to the file repo for PID $project_id");
             $result["note"] = "Redcap internal method failed to move file into file repo";
-            $this->projectLog($project_id, $record, $event_id, "Error Uploading Audio Recording to REDCap file repo");
+            $this->projectLog($project_id, $record, $event_id, "Error Uploading Video Recording to REDCap file repo");
             return json_encode($result);
         }
         $result["success"] = true;
@@ -359,7 +363,7 @@ class AudioRecorder extends AbstractExternalModule
     private function projectLog($project_id, $record, $event_id, $text)
     {
         $sql = NULL;
-        $action = 'Audio Recorder';
+        $action = 'Video Recorder';
         $changes =  $text ?? "No action logged";
 
         REDCap::logEvent($action, $changes, $sql, $record, $event_id, $project_id);
@@ -369,7 +373,7 @@ class AudioRecorder extends AbstractExternalModule
     }
 
     /*
-    Inits the AudioRecorder global with easy-to-gather settings.
+    Inits the VideoRecorder global with easy-to-gather settings.
     Many of these settings are not used on the config page, but it costs nothing.
     */
     private function createJSobject($additionalData = [])

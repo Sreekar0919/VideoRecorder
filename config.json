@@ -1,7 +1,7 @@
 {
-    "name": "Audio Recorder",
-    "description": "Record system and microphone audio and save to local or redcap storage.",
-    "namespace": "UWMadison\\AudioRecorder",
+    "name": "Video Recorder",
+    "description": "Record webcam or screen video with audio and save to local or redcap storage.",
+    "namespace": "UWMadison\\VideoRecorder",
     "authors": [
         {
             "name": "Adam Nunez",
@@ -13,8 +13,8 @@
     "links": {
         "project": [
             {
-                "name": "Audio Recorder",
-                "icon": "fa fa-microphone",
+                "name": "Video Recorder",
+                "icon": "fa fa-video",
                 "url": "index.php"
             }
         ]
@@ -51,7 +51,7 @@
     "project-settings": [
         {
             "key": "descriptive",
-            "name": "Audio Recorder will disable/enable buttons that are not apporpirate to use, but not on page load. Buttons are never hidden. Only one recorder per instrument is supported.",
+            "name": "Video Recorder will disable/enable buttons that are not apporpirate to use, but not on page load. Buttons are never hidden. Only one recorder per instrument is supported.",
             "type": "descriptive"
         },
         {
@@ -61,7 +61,7 @@
         },
         {
             "key": "recorder-instance",
-            "name": "<b>Audio Recorder</b>",
+            "name": "<b>Video Recorder</b>",
             "type": "sub_settings",
             "repeatable": true,
             "sub_settings": [
@@ -77,8 +77,13 @@
                     "type": "textbox"
                 },
                 {
+                    "key": "camera",
+                    "name": "<b>Record Camera</b><br>Webcam video",
+                    "type": "checkbox"
+                },
+                {
                     "key": "desktop",
-                    "name": "<b>Record Desktop Audio</b><br>Useful to capture VOIP calls or meetings",
+                    "name": "<b>Record Screen</b><br>Screen video plus tab/system audio. Takes priority over the camera",
                     "type": "checkbox"
                 },
                 {
@@ -109,6 +114,11 @@
                 {
                     "key": "download-recording",
                     "name": "<b>Download Recording Button</b><br>CSS selector for button class or id",
+                    "type": "textbox"
+                },
+                {
+                    "key": "preview",
+                    "name": "<b>Live Preview</b><br>CSS selector for a &lt;video&gt; element to show what is being recorded",
                     "type": "textbox"
                 },
                 {

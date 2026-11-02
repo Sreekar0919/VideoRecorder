@@ -1,14 +1,16 @@
-# AudioRecorder - Redcap External Module
+# VideoRecorder - Redcap External Module
 
 ## What does it do?
 
-AudioRecorder allows for audio capture of the PC's microphone and audio-out, users can upload the recording to the Redcap web server or download it to their local machine. This EM was originally created to easily capture VOIP calls for later review as apart of a clinical study.
+VideoRecorder captures webcam or screen video, with microphone and screen audio, on REDCap instruments and surveys. Users can upload the recording to a file upload field, the file repo, or the web server, or download it locally. It is a fork of [uwctri/AudioRecorder](https://github.com/uwctri/AudioRecorder) and keeps its configuration and upload paths.
+
+Video is roughly 7.5 MB per minute at the default bitrate (`videoBitsPerSecond` in `recorder.js`). Check PHP `upload_max_filesize`/`post_max_size` and REDCap's max upload size against your max record time.
 
 ## Installing
 
 **Upgrading to 1.2.0**: We added two system-level options and attempt to set them to preserve previous module behavior. If you do not have super user access (i.e. access to all projects at full user rights) then this process will fail. Regardless its a good idea to review system level settings and inform end-users to review their settings for the EM after you have made any changes.
 
-You can install the module from the REDCap EM repo or drop it directly in your modules folder (i.e. `redcap/modules/audio_recorder_v1.0.0`) manually.
+You can install the module from the REDCap EM repo or drop it directly in your modules folder (i.e. `redcap/modules/video_recorder_v1.0.0`) manually.
 
 ## Configuration
 
@@ -36,7 +38,7 @@ You may also want to set a "Upload Time" or "Saved File Name" field which will a
 
 ## Technical Notes
 
-* This EM exposes a JS object `AudioRecorder` that allows you to programmatically invoke start/top/init/upload. You can use these functions if you prefer to integrate the EM into your form.
+* This EM exposes a JS object `VideoRecorder` that allows you to programmatically invoke start/top/init/upload. You can use these functions if you prefer to integrate the EM into your form.
 
 * Due to limitations in the js implementation of `mediaDevices.getDisplayMedia` in some browsers only chrome and chrome-derivatives are supported. Errors exist to inform end-users of this.
 

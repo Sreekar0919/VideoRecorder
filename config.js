@@ -1,7 +1,7 @@
 $(document).ready(() => {
-    console.log("Loaded Audio Recorder config")
+    console.log("Loaded Video Recorder config")
     const $modal = $('#external-modules-configure-modal')
-    const module = ExternalModules.UWMadison.AudioRecorder
+    const module = ExternalModules.UWMadison.VideoRecorder
     $modal.on('show.bs.modal', function () {
         // Making sure we are overriding this modules's modal only.
         if ($(this).data('module') !== module.prefix) return

@@ -1,10 +1,11 @@
-const AudioRecorder = { init: null, start: null, stop: null, upload: null, download: null };
+const VideoRecorder = { init: null, start: null, stop: null, upload: null, download: null };
 
 (() => {
     // Constants
-    const module = ExternalModules.UWMadison.AudioRecorder
+    const module = ExternalModules.UWMadison.VideoRecorder
     let extension = 'webm'
-    let recorderMimeType = 'audio/webm;codecs=opus'
+    let recorderMimeType = 'video/webm;codecs=vp8,opus'
+    const videoBitsPerSecond = 1000000 // ~7.5 MB/min, keeps uploads under typical PHP limits
     const timeOut = 5000
     const defaultFileName = "[timestamp]"
 
@@ -22,16 +23,13 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
         console.error("Error parsing user agent for Chrome:", e)
     }
 
-    const getSupportedAudioFormat = () => {
+    const getSupportedVideoFormat = () => {
         const formats = [
-            { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
-            { mimeType: 'audio/webm', extension: 'webm' },
-            { mimeType: 'audio/ogg;codecs=opus', extension: 'ogg' },
-            { mimeType: 'audio/ogg', extension: 'ogg' },
-            { mimeType: 'audio/mp4;codecs=mp4a.40.2', extension: 'mp4' },
-            { mimeType: 'audio/mp4', extension: 'mp4' },
-            { mimeType: 'audio/aac', extension: 'aac' },
-            { mimeType: 'audio/wav', extension: 'wav' }
+            { mimeType: 'video/webm;codecs=vp9,opus', extension: 'webm' },
+            { mimeType: 'video/webm;codecs=vp8,opus', extension: 'webm' },
+            { mimeType: 'video/webm', extension: 'webm' },
+            { mimeType: 'video/mp4;codecs=avc1,mp4a.40.2', extension: 'mp4' },
+            { mimeType: 'video/mp4', extension: 'mp4' }
         ]
 
         if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
@@ -153,7 +151,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
             Swal.fire({
                 icon: 'error',
                 title: 'Unsupported Browser',
-                text: 'Currently only Google Chrome is supported for desktop/display audio recording.',
+                text: 'Currently only Google Chrome is supported for screen recording.',
             })
             return
         }
@@ -162,12 +160,12 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
             Swal.fire({
                 icon: 'error',
                 title: 'Unsupported Browser',
-                text: 'Your browser does not support audio recording. Please use a modern browser.',
+                text: 'Your browser does not support video recording. Please use a modern browser.',
             })
             return
         }
 
-        const format = getSupportedAudioFormat()
+        const format = getSupportedVideoFormat()
         if (format) {
             recorderMimeType = format.mimeType
             extension = format.extension
@@ -175,7 +173,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
             Swal.fire({
                 icon: 'error',
                 title: 'Unsupported Browser',
-                text: 'No supported audio recording format was found on your browser.',
+                text: 'No supported video recording format was found on your browser.',
             })
             return
         }
@@ -183,8 +181,14 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
         if (initSuccess)
             return
 
-        if (!module.recording.mic && !module.recording.desktop)
+        if (!module.recording.desktop && !module.recording.camera) {
+            Swal.fire({
+                icon: 'error',
+                title: 'No Video Source',
+                text: 'Enable camera or screen recording to capture video.',
+            })
             return
+        }
 
         isRecording = false
         $(module.buttons.download).prop('disabled', true)
@@ -194,10 +198,12 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
         let desktopStream = null
 
         try {
-            if (module.recording.mic) {
+            // Camera only when the screen isn't the video source, MediaRecorder keeps one video track
+            const useCamera = module.recording.camera && !module.recording.desktop
+            if (module.recording.mic || useCamera) {
                 voiceStream = await navigator.mediaDevices.getUserMedia({
-                    video: false,
-                    audio: true
+                    video: useCamera,
+                    audio: module.recording.mic
                 })
             }
             if (module.recording.desktop) {
@@ -210,26 +216,36 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
             permissionFailure()
         }
 
-        if (module.recording.desktop && desktopStream.getAudioTracks().length < 1) {
+        if (initFailure)
+            return
+
+        // Screen sharing without audio is fine for video, only the picture is required
+        const videoTracks = (desktopStream ?? voiceStream)?.getVideoTracks() ?? []
+        if (videoTracks.length < 1) {
             permissionFailure()
             return
         }
 
-        let tracks = [
-            ...mergeAudioStreams(desktopStream, voiceStream)
-        ]
-        stream = new MediaStream(tracks)
+        const audioTracks = mergeAudioStreams(desktopStream, voiceStream)
+        stream = new MediaStream([videoTracks[0], ...audioTracks])
         blobs = []
 
-        // Setup analyser for audio levels if enabled
-        const source = audioContext.createMediaStreamSource(stream)
-        analyser = audioContext.createAnalyser()
-        analyser.fftSize = 1024
-        source.connect(analyser)
-        audioDataArray = new Uint8Array(analyser.frequencyBinCount)
+        if (module.buttons.preview)
+            $(module.buttons.preview).each((_, el) => { el.srcObject = stream; el.muted = true })
+
+        // Setup analyser for audio levels, createMediaStreamSource throws without an audio track
+        analyser = null
+        if (audioTracks.length > 0) {
+            const source = audioContext.createMediaStreamSource(new MediaStream(audioTracks))
+            analyser = audioContext.createAnalyser()
+            analyser.fftSize = 1024
+            source.connect(analyser)
+            audioDataArray = new Uint8Array(analyser.frequencyBinCount)
+        }
 
         rec = new MediaRecorder(stream, {
-            mimeType: recorderMimeType
+            mimeType: recorderMimeType,
+            videoBitsPerSecond: videoBitsPerSecond
         })
         rec.ondataavailable = (e) => blobs.push(e.data)
         rec.onstop = async () => {
@@ -271,7 +287,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
     }
 
     const start = async () => {
-        if (isRecording || !(module.recording.desktop || module.recording.mic))
+        if (isRecording || !(module.recording.desktop || module.recording.camera))
             return
 
         if (!initSuccess) {
@@ -297,13 +313,13 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
                 await audioContext.resume()
 
             rec.start()
-            disableSaveButtons('recording audio')
+            disableSaveButtons('recording video')
             let html = ''
             let timerInterval
             let showAudioLevels = () => { }
             let showTimer = () => { }
 
-            if (module.showAudioLevels) {
+            if (module.showAudioLevels && analyser) {
                 html += '<i class="fas fa-microphone" aria-hidden="true" style="margin-right: 8px"></i><progress id="audio-level" value="0" max="100" style="display: block; width: 180px; min-width: 120px; flex: 1 1 180px"></progress>'
                 showAudioLevels = () => {
                     const progressBar = Swal.getHtmlContainer().querySelector('#audio-level')
@@ -322,7 +338,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
             }
 
             if (module.showTimer) {
-                if (!module.showAudioLevels)
+                if (!(module.showAudioLevels && analyser))
                     html += '<div>Time Elapsed:</div>'
                 html += '<div id="timer" style="margin-left: 10px; white-space: nowrap">0:00</div>'
                 let startTime = Date.now()
@@ -342,7 +358,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
 
             recordingToast = Toast.fire({
                 icon: 'info',
-                title: 'Recording Audio',
+                title: 'Recording Video',
                 timer: 0,
                 html: html,
                 didOpen: () => {
@@ -355,7 +371,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
                 }
             })
 
-            //Record atleast 1 second of audio before allowing a stop
+            //Record atleast 1 second of video before allowing a stop
             setTimeout(() => { isRecording = true }, 1000)
 
             if (module.maxTime > 0)
@@ -368,7 +384,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
             Swal.fire({
                 icon: 'error',
                 title: 'Nothing to record',
-                text: 'No live feeds are available for audio recording. This may be a browser or OS issue.',
+                text: 'No live feeds are available for video recording. This may be a browser or OS issue.',
             })
         }
     }
@@ -410,7 +426,7 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
         if (!module.allowDisk && !module.allowFileRepo)
             return
 
-        disableSaveButtons('uploading audio')
+        disableSaveButtons('uploading video')
         isSaved = true
         let formData = new FormData()
         formData.append('file', blob, downloadName)
@@ -570,9 +586,9 @@ const AudioRecorder = { init: null, start: null, stop: null, upload: null, downl
         setTimeout(attach, 2000)
     })
 
-    AudioRecorder.init = init
-    AudioRecorder.start = start
-    AudioRecorder.stop = stop
-    AudioRecorder.upload = upload
-    AudioRecorder.download = download
+    VideoRecorder.init = init
+    VideoRecorder.start = start
+    VideoRecorder.stop = stop
+    VideoRecorder.upload = upload
+    VideoRecorder.download = download
 })()
